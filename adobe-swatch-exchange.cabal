@@ -1,0 +1,29 @@
+name:                adobe-swatch-exchange
+version:             0.1.0.0
+synopsis:            parse Adobe Swatch Exchange files and (optionally) output .css files with the colors
+homepage:            https://github.com/stepcut/ase2css
+license:             BSD3
+license-file:        LICENSE
+author:              Jeremy Shaw
+maintainer:          jeremy@n-heptane.com
+category:            Web
+build-type:          Simple
+cabal-version:       >=1.8
+
+library
+  exposed-modules:     Data.AdobeSwatchExchange
+                       Data.AdobeSwatchExchange.CSS
+  build-depends:       base                >= 4.5 && < 5,
+                       bytestring          == 0.10.*,
+                       data-binary-ieee754 == 0.4.*,
+                       binary              == 0.5.*,
+                       language-css        == 0.0.*
+executable ase2css
+  main-is: ase2css.hs
+  build-depends:       base                >= 4.5 && < 5,
+                       binary              == 0.5.*,
+                       bytestring          == 0.10.*,
+                       data-binary-ieee754 == 0.4.*,
+                       language-css        == 0.0.*,
+                       pretty              == 1.1.*
+

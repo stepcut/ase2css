@@ -1,0 +1,27 @@
+module GenCss where
+
+import AdobeSwatchExchange (ASEBlock(CE), ColorEntry(colorName), AdobeSwatchExchange, blocks, pASE)
+import qualified Data.ByteString.Lazy as B
+import Language.Css.Build
+import Language.Css.Build.Idents
+import Language.Css.Pretty
+import Language.Css.Syntax
+import Data.Binary.Get                (runGet)
+
+ase2css colorEntries =
+    ruleSets (concatMap genColor (zip [1..] colorEntries))
+
+genColor :: (Int, ColorEntry) -> [RuleSet]
+genColor (n, colorEntry) =
+    [ (star /. ("fg-color-ase-" ++ Prelude.show n)) [ color <:> (cword $ colorName colorEntry)
+                                                    ]
+    , (star /. ("bg-color-ase-" ++ Prelude.show n)) [ backgroundColor <:> (cword $ colorName colorEntry)
+                                                    ]
+    ]
+
+test_css =
+    do c <- B.readFile "Yellow rose.ase"
+       let ase = runGet pASE c
+       print ase
+       print $ pretty $ ase2css [ ce | (CE ce) <- blocks ase ]
+       return ()

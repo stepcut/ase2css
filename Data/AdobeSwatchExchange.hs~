@@ -1,0 +1,168 @@
+{-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
+module AdobeSwatchExchange where
+
+import Control.Applicative            ((<$>))
+import Control.Monad                  (replicateM)
+import qualified Data.ByteString.Lazy as B
+import Data.Char                      (chr)
+import Data.Data                      (Data, Typeable)
+import Data.Word                      (Word16)
+import Data.Binary.IEEE754            (getFloat32be)
+import Numeric                        (showHex)
+import Data.Binary.Get                (Get, getByteString, getWord8, getWord16be, getWord32be, runGet)
+
+{-
+But to summarize, look for the following elements (in no particular order):
+- header
+- version
+- "block count"
+- blocks
+- color group start
+- color group end
+- swatches
+- "zero block"
+
+- strings
+
+For swatch "blocks"
+- swatch header
+- block length
+- swatch name
+- color space
+- color component values (single-precision floats)
+- swatch attributes
+
+The only thing to really watch out for is that the count near the beginning is *not* the swatch count, but the number of "blocks" in the file, which also includes color group information.
+
+File signature 4*char (ASEF)
+Version 2*int8 (1.0)
+Number of blocks 1*int16
+Blocks
+Block type (0xc001 ⇒ Group start, 0xc002 ⇒ Group end, 0x0001 ⇒ Color entry)
+Block length 1*int16
+Group/Color name 0-terminated string of length (int16) double-byte characters
+Color model 4*char (CMYK, RGB, LAB or Gray)
+Color values CMYK ⇒ 4*float16 / RGB & LAB ⇒ 3*float16 / Gray ⇒ 1*float16
+Color type 1*int8 (0 ⇒ Global, 1 ⇒ Spot, 2 ⇒ Normal)
+
+-}
+
+data Color
+    = CYMK
+    | RGB Float Float Float
+    | LAB
+    | Gray
+    deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+data ColorType
+    = Global
+    | Spot
+    | Normal
+    deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+data ColorEntry = ColorEntry
+    { colorName :: String
+    , color     :: Color
+    , colorType :: ColorType
+    }
+    deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+data ASEBlock
+    = GroupStart { groupName :: String }
+    | GroupEnd
+    | CE ColorEntry
+    deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+data AdobeSwatchExchange = AdobeSwatchExchange
+    { version :: (Word16, Word16)
+    , blocks  :: [ASEBlock]
+    }
+    deriving (Eq, Ord, Read, Show, Data, Typeable)
+
+pFileSig :: Get ()
+pFileSig =
+    do bs <- getByteString 4
+       case bs of
+         "ASEF" -> return ()
+         _ -> fail $ "Invalid file signature: " ++ show bs
+
+pVersion :: Get (Word16, Word16)
+pVersion =
+    do maj <- getWord16be
+       min <- getWord16be
+       return (maj, min)
+
+pFloat :: Get Float
+pFloat =
+    do b <- getFloat32be
+       return b
+
+pBlock :: Get ASEBlock
+pBlock =
+    do blockType <- getWord16be
+       case blockType of
+         0xc001 -> do bl <- getWord32be
+                      n <- pName
+                      return (GroupStart n)
+         0xc002 -> do bl <- getWord32be
+                      return GroupEnd
+         0x0001 -> CE <$> pColorEntry
+         _      -> fail $ "Unknown block type: " ++ (showHex blockType "")
+
+pName :: Get String
+pName =
+    do nameLength  <- getWord16be
+       doubleChars <- replicateM ((fromIntegral nameLength) - 1) getWord16be
+       _ <- getWord16be
+       return $ map (chr . fromIntegral) doubleChars
+
+pColor :: Get Color
+pColor =
+    do modelString <- map (chr . fromIntegral) <$> replicateM 4 getWord8
+       case modelString of
+         "CYMK" -> return $ CYMK
+         "RGB " -> do r <- pFloat
+                      g <- pFloat
+                      b <- pFloat
+                      return $ RGB r g b
+         "LAB " -> return $ LAB
+         "Gray" -> return $ Gray
+         _      -> fail $ "Unknown color model: " ++ modelString
+
+pColorType :: Get ColorType
+pColorType =
+    do ct <- getWord16be
+       case ct of
+         0 -> return Global
+         1 -> return Spot
+         2 -> return Normal
+         _ -> fail $ "Unknown color type: " ++ show ct
+
+pColorEntry :: Get ColorEntry
+pColorEntry =
+    do bl    <- getWord32be
+       nm    <- pName
+       color <- pColor
+       typ   <- pColorType
+       return $ ColorEntry { colorName = nm
+                           , color     = color
+                           , colorType = typ
+                           }
+
+
+
+pASE :: Get AdobeSwatchExchange
+pASE =
+    do pFileSig
+       v <- pVersion
+       numBlocks <- getWord32be
+       bs <- replicateM (fromIntegral numBlocks) pBlock -- unsafe-ish if there are billions of blocks
+       return $ AdobeSwatchExchange { version = v
+                                    , blocks  = bs
+                                    }
+
+
+test =
+    do c <- B.readFile "Yellow rose.ase"
+       print $ runGet pASE c
+       return ()
