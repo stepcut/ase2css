@@ -1,4 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable, OverloadedStrings #-}
+{- |
+
+This module defines the types for 'AdobeStageExchange' and a suitable
+'Binary' instance. All the get/put helper functions are also exported,
+but, in general, you will just want the types and the 'Binary'
+instance.
+
+-}
 module Data.AdobeSwatchExchange where
 
 import Control.Applicative            ((<$>))
@@ -50,6 +58,7 @@ Color type 1*int8 (0 ⇒ Global, 1 ⇒ Spot, 2 ⇒ Normal)
 
 -}
 
+-- | A color
 data Color
     = CYMK Float Float Float Float
     | RGB Float Float Float
@@ -57,12 +66,14 @@ data Color
     | Gray Float
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 
+-- | color type
 data ColorType
     = Global
     | Spot
     | Normal
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 
+-- | A named color
 data ColorEntry = ColorEntry
     { colorName :: String
     , color     :: Color
@@ -70,18 +81,21 @@ data ColorEntry = ColorEntry
     }
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 
+-- | An Adobe Swatch Exchange block
 data ASEBlock
     = GroupStart { groupName :: String }
     | GroupEnd
     | CE ColorEntry
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 
+-- | AdobeSwatchExchange
 data AdobeSwatchExchange = AdobeSwatchExchange
     { version :: (Word16, Word16)
     , blocks  :: [ASEBlock]
     }
     deriving (Eq, Ord, Read, Show, Data, Typeable)
 
+-- | get the ASEF file signature
 getFileSig :: Get ()
 getFileSig =
     do bs <- getByteString 4
@@ -256,16 +270,16 @@ instance Binary AdobeSwatchExchange where
     put = putASE
     get = getASE
 
-test =
-    do c <- B.readFile "Yellow rose.ase"
-       print $ runGet getASE c
-       return ()
-
-test_2 =
-    do c <- B.readFile "Yellow rose.ase"
-       print c
-       let ase = runGet getASE c
-       print ase
-       let c' = runPut (put ase)
-       print c'
-       print (c == c')
+-- | Convert a 'Color' to an RGB hex value.
+colorToHex :: Color -> String
+colorToHex (RGB r g b) =
+    showString "#" .
+    showHex' (round (r * 255)) .
+    showHex' (round (g * 255)) .
+    showHex' (round (b * 255)) $ ""
+    where
+      showHex' n
+        | n < 10 = showString "0" . showHex n
+        | otherwise  = showHex n
+colorToHex c =
+    error $ "Alas! We have not written the code to convert " ++ show c ++ " to the RGB color space."
