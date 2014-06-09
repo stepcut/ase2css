@@ -1,5 +1,5 @@
 name:                adobe-swatch-exchange
-version:             0.2.0
+version:             0.2.1
 synopsis:            parse Adobe Swatch Exchange files and (optionally) output .css files with the colors
 homepage:            https://github.com/stepcut/ase2css
 license:             BSD3
@@ -17,27 +17,27 @@ library
   build-depends:       base                >= 4.5 && < 5,
                        bytestring          == 0.10.*,
                        data-binary-ieee754 == 0.4.*,
-                       binary              == 0.5.*,
+                       binary              >= 0.5 && < 0.8,
                        language-css        == 0.0.*,
-                       mtl                 >= 2.0 && < 2.2,
+                       mtl                 >= 2.0 && < 2.3,
                        pretty              == 1.1.*
 executable ase2css
   main-is: ase2css.hs
   build-depends:       base                >= 4.5 && < 5,
-                       binary              == 0.5.*,
+                       binary              >= 0.5 && < 0.8,
                        bytestring          == 0.10.*,
                        data-binary-ieee754 == 0.4.*,
                        language-css        == 0.0.*,
-                       mtl                 >= 2.0 && < 2.2,
+                       mtl                 >= 2.0 && < 2.3,
                        pretty              == 1.1.*
 
 executable ase2less
   main-is: ase2less.hs
   build-depends:       base                >= 4.5 && < 5,
-                       binary              == 0.5.*,
+                       binary              >= 0.5 && < 0.8,
                        bytestring          == 0.10.*,
                        data-binary-ieee754 == 0.4.*,
-                       mtl                 >= 2.0 && < 2.2,
+                       mtl                 >= 2.0 && < 2.3,
                        pretty              == 1.1.*
 
 
