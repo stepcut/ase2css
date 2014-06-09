@@ -36,7 +36,7 @@ no binaries available!
 
 If you want to try to build this package you will need to:
 
-    1. install the Haskell Platform package available from http://www.haskell.org/platform/
+    1. install the Haskell Platform package available from [http://www.haskell.org/platform/](http://www.haskell.org/platform/)
 
     2. run `cabal update`
 
